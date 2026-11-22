@@ -71,9 +71,13 @@ byId('auto').onclick=()=>{
   if(best)selected=paths[best];
   byId('status').textContent=best?'Selected '+best+' marks. Remaining to target: '+(goal-best)+' marks.':'Every matching question exceeds the target. Your selection has been kept.';render();
 };
-byId('printBtn').onclick=()=>{
-  byId('sheet').innerHTML='<h1>'+escapeText(byId('titleInput').value||'9709 Mathematics Practice')+'</h1><p>Mathematics · Total marks '+byId('sum').textContent+'</p><ol>'+selected.map(q=>'<li><strong>['+q.marks+']</strong>'+escapeText(q.url?q.ref+' '+q.skill+' (see original paper)':q.note)+'</li>').join('')+'</ol>';
-  window.print();
+byId('printBtn').onclick=async()=>{
+  if(!window.openPaperExport) {
+    byId('status').textContent='The PDF engine needs an HTTP website. Open the published site or start the local server described in README.';
+    return;
+  }
+  try {await window.openPaperExport(selected);}
+  catch(error) {byId('status').textContent=error.message;}
 };
 chapters();render();
 
@@ -92,5 +96,6 @@ for (const year of years) {
   }
   byId('years').append(group);
 }
+
 
 

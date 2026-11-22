@@ -1,5 +1,5 @@
 # 9709 Mathematics Question Bank
-Open index.html in a browser. Select P1 or S1, filter by chapter or skill, and add past-paper questions to a paper. Build paper selects entries up to the target mark total. Print / Save PDF produces a reference sheet. Open original links to the source exam.
-The archive covers 2016–2026. Entries include whole questions and individual parts. The year directory shows indexed marks against each paper total. Suggested topics are machine-assigned. Topic pending review indicates an unclassified entry.
-The chapter structure follows the Cambridge 9709 syllabus for 2028–2030. Project code is licensed under MIT. External papers remain the property of their respective rights holders.
-
+Serve the static files through GitHub Pages. For local use with Python, run python -m http.server 8000 from the directory containing index.html and visit http://localhost:8000/.
+Select questions and open Student / Teacher PDF. Source PDFs are read in the browser. Where the source host blocks cross-origin access, use Open source and import the matching question paper and mark scheme using their original filenames.
+Review the suggested crops. Scans and unusual layouts may require manual page and crop coordinates. Export uses complete source questions, including their subparts. Selecting two parts of one question includes that whole question once. Selected-part mark totals in the builder may differ from the exported whole-question total.
+Student PDFs contain question extracts. Teacher PDFs also include the corresponding mark scheme after each question. Code is MIT licensed. Bundled dependency licences are in vendor. Source papers retain their original copyright.
