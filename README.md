@@ -1,5 +1,6 @@
 # 9709 Mathematics Question Bank
 Serve the static files through GitHub Pages. For local use with Python, run python -m http.server 8000 from the directory containing index.html and visit http://localhost:8000/.
-Select questions and open Student / Teacher PDF. Source PDFs are read in the browser. Where the source host blocks cross-origin access, use Open source and import the matching question paper and mark scheme using their original filenames.
+Select questions and open Student / Teacher PDF. The exporter first looks for matching PDFs in source-pdfs/ alongside index.html, then tries the original source URL. The Windows offline edition already includes the paired papers and mark schemes. Where the source host blocks cross-origin access, use Open source and import the matching question paper and mark scheme using their original filenames.
 Review the suggested crops. Scans and unusual layouts may require manual page and crop coordinates. Export uses complete source questions, including their subparts. Selecting two parts of one question includes that whole question once. Selected-part mark totals in the builder may differ from the exported whole-question total.
 Student PDFs contain question extracts. Teacher PDFs also include the corresponding mark scheme after each question. Code is MIT licensed. Bundled dependency licences are in vendor. Source papers retain their original copyright.
+

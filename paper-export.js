@@ -152,7 +152,7 @@ async function refresh() {
 window.openPaperExport=async selection=>{
   jobs=[...new Map(selection.map(q=>[wholeRef(q),q])).values()].map(q=>({q,ref:wholeRef(q),number:Number(q.ref.match(/ Q(\d+)/)[1])}));
   $('exportDialog').showModal();
-  status('Import the original PDFs below. Export includes each selected whole question, with all its parts. Preview crops before downloading.');
+  $('manualSources').hidden=true;
   try {
     status('Opening source PDFs…');
     const sources=new Map();
@@ -160,15 +160,34 @@ window.openPaperExport=async selection=>{
       const name=filename(job.q,type);
       if(!files.has(name)) sources.set(name,job.q.url.split('#')[0].replace('_qp_',type==='ms'?'_ms_':'_qp_'));
     }
-    await Promise.allSettled([...sources].map(async ([name,url])=>{
-      const response=await fetch(url,{credentials:'omit',signal:AbortSignal.timeout(6000)});
-      if(!response.ok)return;
-      const bytes=new Uint8Array(await response.arrayBuffer());
-      await PDFDocument.load(bytes);
-      files.set(name,{bytes});
-    }));
+    let completed=0;
+    const pending=[...sources];
+    const missing=[];
+    async function downloadNext() {
+      while(pending.length) {
+        const [name,url]=pending.shift();
+        let loaded=false;
+        for(const address of [new URL('source-pdfs/'+name,document.baseURI).href,url]) {
+          try {
+            const response=await fetch(address,{credentials:'omit',signal:AbortSignal.timeout(30000)});
+            if(!response.ok) continue;
+            const bytes=new Uint8Array(await response.arrayBuffer());
+            if(!new TextDecoder().decode(bytes.subarray(0,5)).startsWith('%PDF-')) continue;
+            await PDFDocument.load(bytes);
+            files.set(name,{bytes});
+            loaded=true;
+            break;
+          } catch { /* Try the next source for this paper. */ }
+        }
+        if(!loaded) missing.push(name);
+        status('Loading source PDFs: '+(++completed)+' / '+sources.size);
+      }
+    }
+    await Promise.all(Array.from({length:Math.min(4,pending.length)},downloadNext));
     await refresh();
-    status('Preview each whole question and its mark scheme. Import any source PDFs listed as required.');
+    $('manualSources').hidden=missing.length===0;
+    status(missing.length?'Could not fetch '+missing.join(', ')+'. Use the local edition with its downloaded paper library, or retry the source.':'Source papers are ready. Preview your questions or download a PDF.');
+
   } catch(error) {status(error.message);}
 };
 $('closeExport').onclick=()=>{$('exportDialog').close();if(previewUrl)URL.revokeObjectURL(previewUrl);$('pdfPreview').removeAttribute('src');};
