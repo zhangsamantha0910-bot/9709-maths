@@ -1230,5 +1230,101 @@ window.paperDirectory = [
     "count": 4,
     "indexedMarks": 21,
     "totalMarks": 75
+  },
+  {
+    "ref": "9709/11/M/J/15",
+    "year": 2015,
+    "url": "https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/9709_s15_qp_11.pdf",
+    "count": 10,
+    "indexedMarks": 75,
+    "totalMarks": 75
+  },
+  {
+    "ref": "9709/12/M/J/15",
+    "year": 2015,
+    "url": "https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/9709_s15_qp_12.pdf",
+    "count": 11,
+    "indexedMarks": 75,
+    "totalMarks": 75
+  },
+  {
+    "ref": "9709/13/M/J/15",
+    "year": 2015,
+    "url": "https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/9709_s15_qp_13.pdf",
+    "count": 11,
+    "indexedMarks": 75,
+    "totalMarks": 75
+  },
+  {
+    "ref": "9709/61/M/J/15",
+    "year": 2015,
+    "url": "https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/9709_s15_qp_61.pdf",
+    "count": 7,
+    "indexedMarks": 50,
+    "totalMarks": 50
+  },
+  {
+    "ref": "9709/62/M/J/15",
+    "year": 2015,
+    "url": "https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/9709_s15_qp_62.pdf",
+    "count": 7,
+    "indexedMarks": 50,
+    "totalMarks": 50
+  },
+  {
+    "ref": "9709/63/M/J/15",
+    "year": 2015,
+    "url": "https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/9709_s15_qp_63.pdf",
+    "count": 7,
+    "indexedMarks": 50,
+    "totalMarks": 50
+  },
+  {
+    "ref": "9709/11/O/N/15",
+    "year": 2015,
+    "url": "https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/9709_w15_qp_11.pdf",
+    "count": 0,
+    "indexedMarks": 0,
+    "totalMarks": 75
+  },
+  {
+    "ref": "9709/12/O/N/15",
+    "year": 2015,
+    "url": "https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/9709_w15_qp_12.pdf",
+    "count": 0,
+    "indexedMarks": 0,
+    "totalMarks": 75
+  },
+  {
+    "ref": "9709/13/O/N/15",
+    "year": 2015,
+    "url": "https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/9709_w15_qp_13.pdf",
+    "count": 0,
+    "indexedMarks": 0,
+    "totalMarks": 75
+  },
+  {
+    "ref": "9709/61/O/N/15",
+    "year": 2015,
+    "url": "https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/9709_w15_qp_61.pdf",
+    "count": 0,
+    "indexedMarks": 0,
+    "totalMarks": 50
+  },
+  {
+    "ref": "9709/62/O/N/15",
+    "year": 2015,
+    "url": "https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/9709_w15_qp_62.pdf",
+    "count": 0,
+    "indexedMarks": 0,
+    "totalMarks": 50
+  },
+  {
+    "ref": "9709/63/O/N/15",
+    "year": 2015,
+    "url": "https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/9709_w15_qp_63.pdf",
+    "count": 0,
+    "indexedMarks": 0,
+    "totalMarks": 50
   }
 ];
