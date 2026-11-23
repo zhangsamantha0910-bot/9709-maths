@@ -72,13 +72,38 @@ byId('auto').onclick=()=>{
   if(best)selected=paths[best];
   byId('status').textContent=best?'Selected '+best+' marks. Remaining to target: '+(goal-best)+' marks.':'Every matching question exceeds the target. Your selection has been kept.';render();
 };
-byId('printBtn').onclick=async()=>{
-  if(!window.openPaperExport) {
-    byId('status').textContent='The PDF engine needs an HTTP website. Open the published site or start the local server described in README.';
-    return;
+let enginePromise;
+let engineAttempt=0;
+function loadEngine(){
+  if(!enginePromise){
+    const suffix=engineAttempt++ ? '&retry='+Date.now() : '';
+    enginePromise=import('./paper-export.js?v=pdf-ready-2'+suffix).catch(error=>{
+      enginePromise=null;
+      throw error;
+    });
   }
-  try {await window.openPaperExport(selected);}
-  catch(error) {byId('status').textContent=error.message;}
+  return enginePromise;
+}
+loadEngine().catch(()=>{}); // Warm up inline previews while the bank is being browsed.
+byId('printBtn').onclick=async()=>{
+  const button=byId('printBtn');
+  const selection=selected.slice();
+  button.disabled=true;
+  byId('status').textContent='Opening PDF tools…';
+  let timer;
+  try{
+    await Promise.race([loadEngine(),new Promise((_,reject)=>{
+      timer=setTimeout(()=>reject(Error('The PDF tools are taking longer than expected to download. Please try again.')),25000);
+    })]);
+    clearTimeout(timer);
+    byId('status').textContent='';
+    await window.openPaperExport(selection);
+  }catch(error){
+    byId('status').textContent='Could not open PDF tools. '+error.message;
+  }finally{
+    clearTimeout(timer);
+    button.disabled=!selected.length;
+  }
 };
 chapters();render();
 

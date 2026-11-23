@@ -127,7 +127,8 @@ async function showPreview(job, type) {
 }
 async function refresh() {
   $('exportJobs').replaceChildren();
-  for(const job of jobs) {
+  for(const [i,job] of jobs.entries()) {
+    status('Locating question and mark scheme '+(i+1)+' / '+jobs.length+'…');
     const article=document.createElement('article');
     const heading=document.createElement('h3');heading.textContent=job.ref;
     article.append(heading);
@@ -196,6 +197,7 @@ async function loadSelection(){
 }
 window.openPaperExport=async selection=>{
   jobs=[...new Map(selection.map(q=>[wholeRef(q),q])).values()].map(q=>({q,ref:wholeRef(q),number:Number(q.ref.match(/ Q(\d+)/)[1])}));
+  status('Preparing your selection…');
   $('exportDialog').showModal();
   await loadSelection();
 };

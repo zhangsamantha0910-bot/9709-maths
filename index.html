@@ -10,11 +10,11 @@
 <aside><small>PAPER BUILDER</small><h2>Your selection</h2><div class="stats"><div><strong id="num"></strong>Questions</div><div><strong id="sum"></strong>Total marks</div></div><ol id="basket"></ol><p id="empty">Add a question or build a paper by marks.</p><label for="target">Target marks</label><div class="build"><input id="target" type="number" min="1" max="200" value="10"><button id="auto">Build paper</button></div><p id="status" role="status"></p><label for="titleInput">Paper title</label><input id="titleInput" placeholder="9709 Mathematics Practice"><button class="primary" id="printBtn">Student / Teacher PDF</button></aside></main>
 <dialog id="exportDialog">
 <div class="exportHead"><div><small>9709 MATHEMATICS</small><h2>Prepare your paper</h2></div><button id="closeExport" aria-label="Close export">Close</button></div>
-<p id="exportStatus" role="status">Loading PDF engine…</p>
+<p id="exportStatus" role="status" aria-live="polite"></p>
 <button id="retryPapers" hidden>Retry loading papers</button>
 <p class="cropHelp">Crop format is page:top-bottom in points, measured from the top of the page. Use a comma for another page. Preview the complete question and mark scheme before export.</p>
 <div class="exportBody"><section id="exportJobs"></section><section class="previewPanel"><h3 id="previewLabel">PDF crop preview</h3><iframe id="pdfPreview" title="Original question or mark scheme preview"></iframe></section></div>
 <footer><button class="primary" id="downloadStudent">Download student PDF</button><button id="downloadTeacher">Download teacher PDF + mark schemes</button></footer>
-</dialog><script src="data.js"></script><script src="papers.js"></script><script src="past.js"></script><script src="app.js"></script><script src="vendor/pdf-lib.min.js"></script><script type="module" src="paper-export.js"></script>
+</dialog><script src="data.js"></script><script src="papers.js"></script><script src="past.js"></script><script src="vendor/pdf-lib.min.js"></script><script src="app.js?v=pdf-ready-2"></script>
 </body></html>
 
