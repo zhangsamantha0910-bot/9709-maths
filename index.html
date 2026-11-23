@@ -11,11 +11,12 @@
 <dialog id="exportDialog">
 <div class="exportHead"><div><small>9709 MATHEMATICS</small><h2>Prepare your paper</h2></div><button id="closeExport" aria-label="Close export">Close</button></div>
 <p id="exportStatus" role="status">Loading PDF engine…</p>
-<details id="manualSources" hidden><summary>Recover missing sources</summary><label for="sourceFiles">Import original question papers and mark schemes</label>
+<details id="manualSources" hidden><summary>Recover missing sources</summary><p>For automatic downloads in Chrome or Edge, <a href="9709-source-reader.zip" download>download the paper reader</a>, unzip it, enable Developer mode in Extensions and choose Load unpacked. Select the folder containing manifest.json, then reload this page.</p><label for="sourceFiles">Import original question papers and mark schemes</label>
 <input id="sourceFiles" type="file" accept=".pdf,application/pdf" multiple></details>
 <p class="cropHelp">Crop format is page:top-bottom in points, measured from the top of the page. Use a comma for another page. Preview the complete question and mark scheme before export.</p>
 <div class="exportBody"><section id="exportJobs"></section><section class="previewPanel"><h3 id="previewLabel">PDF crop preview</h3><iframe id="pdfPreview" title="Original question or mark scheme preview"></iframe></section></div>
 <footer><button class="primary" id="downloadStudent">Download student PDF</button><button id="downloadTeacher">Download teacher PDF + mark schemes</button></footer>
 </dialog><script src="data.js"></script><script src="papers.js"></script><script src="past.js"></script><script src="app.js"></script><script src="vendor/pdf-lib.min.js"></script><script type="module" src="paper-export.js"></script>
 </body></html>
+
 

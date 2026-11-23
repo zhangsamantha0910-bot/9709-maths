@@ -29,6 +29,27 @@ function parseRegions(value, pages) {
 }
 function regionsText(regions) {return regions.map(r=>r.page+':'+r.top.toFixed(1)+'-'+r.bottom.toFixed(1)).join(', ');}
 
+function readWithExtension(file) {
+  return new Promise((resolve,reject)=>{
+    const id=crypto.randomUUID();
+    function finish(error,bytes) {
+      clearTimeout(timer);
+      window.removeEventListener('message',receive);
+      if(error)reject(error); else resolve(bytes);
+    }
+    function receive(event) {
+      const data=event.data;
+      if(event.source!==window || event.origin!==location.origin || data?.channel!=='9709-result' || data.id!==id)return;
+      try {
+        if(!data.pdf)throw Error(data.error || 'Missing PDF');
+        finish(null,Uint8Array.from(atob(data.pdf),ch=>ch.charCodeAt(0)));
+      }catch(error){finish(error);}
+    }
+    const timer=setTimeout(()=>finish(Error('Reader timed out')),45000);
+    window.addEventListener('message',receive);
+    window.postMessage({channel:'9709-request',id,file},location.origin);
+  });
+}
 async function readSource(name) {
   if (!files.has(name)) return null;
   const source = files.get(name);
@@ -167,7 +188,15 @@ window.openPaperExport=async selection=>{
       while(pending.length) {
         const [name,url]=pending.shift();
         let loaded=false;
-        for(const address of [new URL('source-pdfs/'+name,document.baseURI).href,url]) {
+        if(document.documentElement.dataset.paperReader==='1') {
+          try {
+            const bytes=await readWithExtension(name);
+            await PDFDocument.load(bytes);
+            files.set(name,{bytes});
+            loaded=true;
+          } catch { /* Fall back to the site sources. */ }
+        }
+        for(const address of loaded?[]:[new URL('source-pdfs/'+name,document.baseURI).href,url]) {
           try {
             const response=await fetch(address,{credentials:'omit',signal:AbortSignal.timeout(30000)});
             if(!response.ok) continue;
@@ -286,6 +315,7 @@ for(const [id,teacher] of [['downloadStudent',false],['downloadTeacher',true]]) 
     finally{buttons.forEach(b=>b.disabled=false);}
   };
 }
+
 
 
 
