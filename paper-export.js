@@ -46,7 +46,7 @@ async function parseSource(source) {
     const text=await page.getTextContent();
     const lines=text.items.filter(t=>t.str?.trim()).map(t=>{
       const xy=viewport.convertToViewportPoint(t.transform[4],t.transform[5]);
-      return {text:t.str, x:xy[0], top:xy[1]-Math.abs(t.height || 10), height:Math.abs(t.height || 10)};
+      return {text:t.str, width:t.width, x:xy[0], top:xy[1]-Math.abs(t.height || 10), height:Math.abs(t.height || 10)};
     });
     source.pages.push({width:viewport.width,height:viewport.height,lines});
   }
@@ -203,6 +203,29 @@ window.openPaperExport=async selection=>{
 };
 $('retryPapers').onclick=loadSelection;
 $('closeExport').onclick=()=>{$('exportDialog').close();if(previewUrl)URL.revokeObjectURL(previewUrl);$('pdfPreview').removeAttribute('src');};
+// Replace only a source question label. Coordinates are measured in the
+// rotated PDF.js viewport, the same space used for the crop preview.
+function renumberExtract(page,part,region,firstRegion,oldNumber,newNumber,scale,font) {
+  if(oldNumber===newNumber)return;
+  const lines=part.source.pages[region.page-1].lines;
+  const pattern=new RegExp('^'+oldNumber+'(?=$|\\s|\\()');
+  const header=lines.find(l=>l.text.trim()==='Question');
+  const labels=lines.filter(l=>{
+    if(l.top<region.top || l.top+l.height>region.bottom || !pattern.test(l.text))return false;
+    if(part.type==='qp')return firstRegion && l.x>=28 && l.x<80 && l.top-region.top<=18;
+    return header && Math.abs(l.x+Math.min(l.width,30)/2-(header.x+header.width/2))<24;
+  }).sort((a,b)=>a.top-b.top);
+  for(const l of (part.type==='qp'?labels.slice(0,1):labels)){
+    const h=l.height*scale;
+    const digits=String(oldNumber);
+    const width=l.text.trim()===digits ? l.width*scale : font.widthOfTextAtSize(digits,h);
+    const x=42+(l.x-28)*scale, baseline=756-(l.top+l.height-region.top)*scale;
+    page.drawRectangle({x:x-0.5,y:baseline-1,width:width+0.9,height:h+1.5,color:rgb(1,1,1)});
+    const replacement=String(newNumber);
+    const right=x+width;
+    page.drawText(replacement,{x:right-font.widthOfTextAtSize(replacement,h),y:baseline,size:h,font});
+  }
+}
 async function createEdition(teacher) {
   const sourceDocs=new Map();
   const prepared=[];
@@ -241,7 +264,7 @@ async function createEdition(teacher) {
   draw(cover,'INFORMATION',48,355,12,bold);
   draw(cover,'This paper contains '+jobs.length+' whole questions, including all their parts.',48,328);
   draw(cover,'The marks for each part are shown in the original question.',48,304);
-  draw(cover,'Source question numbers are retained within the original extracts.',48,280);
+  draw(cover,'Questions are numbered in selection order.',48,280);
   draw(cover,'Independently assembled practice paper.',48,90,10);
   draw(cover,'Source materials retain their original copyright.',48,74,10);
   for(let i=0;i<prepared.length;i++) {
@@ -252,11 +275,12 @@ async function createEdition(teacher) {
         const page=doc.addPage([595.28,841.89]);
         draw(page,part.type==='ms'?'MARK SCHEME':'MATHEMATICS',42,804,11,bold);
         draw(page,'Question '+(i+1)+(n?' (continued)':''),42,781,11,bold);
-        draw(page,job.ref,330,781,10);
+        if(teacher)draw(page,'Source: '+job.ref,330,781,10);
         page.drawLine({start:{x:42,y:770},end:{x:553,y:770},thickness:.6});
         const crop=await embedCrop(doc,part.source,part.document,region);
         const scale=Math.min(511/crop.width,686/crop.height,1.15);
         placeCrop(page,crop,42,756-crop.height*scale,scale);
+        renumberExtract(page,part,region,n===0,job.number,i+1,scale,bold);
       }
     }
   }
