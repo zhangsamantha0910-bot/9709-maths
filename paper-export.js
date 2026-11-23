@@ -115,7 +115,7 @@ async function cropPdf(source, regions) {
 async function showPreview(job, type) {
   try {
     const source=await readSource(filename(job.q,type));
-    if(!source) throw Error('Import '+filename(job.q,type)+' first.');
+    if(!source) throw Error('Retry loading this paper.');
     const input=job.inputs[type];
     const regions=parseRegions(input.value,source.pages);
     const bytes=await cropPdf(source,regions);
@@ -143,7 +143,7 @@ async function refresh() {
       input.value=previous || (source?regionsText(findRegions(source,job.number,type)):'');
       input.oninput=()=>{job.regions??={};job.regions[type]=input.value;};
       job.inputs[type]=input;
-      const text=document.createElement('p'); text.textContent=source?'Loaded '+name:'Required PDF: '+name;
+      const text=document.createElement('p'); text.textContent=source?'Loaded '+name:'Paper temporarily unavailable';
       const preview=document.createElement('button');preview.textContent='Preview crop';preview.onclick=()=>showPreview(job,type);
       const link=document.createElement('a');link.textContent='Open source';link.target='_blank';link.rel='noopener';
       link.href='source-pdfs/'+name;
@@ -152,65 +152,55 @@ async function refresh() {
     $('exportJobs').append(article);
   }
 }
+async function getPaperBytes(name) {
+  const address=new URL('source-pdfs/'+name,document.baseURI);
+  for(let attempt=0;attempt<3;attempt++){
+    try {
+      const response=await fetch(address,{cache:attempt?'reload':'default',signal:AbortSignal.timeout(30000)});
+      if(!response.ok)throw Error('HTTP '+response.status);
+      const bytes=new Uint8Array(await response.arrayBuffer());
+      await PDFDocument.load(bytes);
+      return bytes;
+    } catch(error) {
+      if(attempt===2)throw error;
+      await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)));
+    }
+  }
+}
+
+async function loadSelection(){
+  const retry=$('retryPapers');
+  retry.hidden=true;
+  const buttons=[$('downloadStudent'),$('downloadTeacher')];
+  buttons.forEach(button=>button.disabled=true);
+  const names=[...new Set(jobs.flatMap(job=>['qp','ms'].map(type=>filename(job.q,type))))].filter(name=>!files.has(name));
+  let next=0,completed=0;
+  status('Loading papers…');
+  async function worker(){
+    while(next<names.length){
+      const name=names[next++];
+      try{files.set(name,{bytes:await getPaperBytes(name)});}catch{ /* Retried from the dialog if the network remains unavailable. */ }
+      status('Loading papers: '+(++completed)+' / '+names.length);
+    }
+  }
+  try{
+    await Promise.all(Array.from({length:Math.min(4,names.length)},worker));
+    await refresh();
+    const studentReady=jobs.every(job=>files.has(filename(job.q,'qp')));
+    const teacherReady=studentReady && jobs.every(job=>files.has(filename(job.q,'ms')));
+    buttons[0].disabled=!studentReady;
+    buttons[1].disabled=!teacherReady;
+    retry.hidden=teacherReady;
+    status(teacherReady?'Ready. Preview your questions or download an edition.':'Some papers could not be loaded. Check your connection and retry.');
+  }catch(error){status(error.message);retry.hidden=false;}
+}
 window.openPaperExport=async selection=>{
   jobs=[...new Map(selection.map(q=>[wholeRef(q),q])).values()].map(q=>({q,ref:wholeRef(q),number:Number(q.ref.match(/ Q(\d+)/)[1])}));
   $('exportDialog').showModal();
-  $('manualSources').hidden=true;
-  try {
-    status('Opening source PDFs…');
-    const sources=new Map();
-    for(const job of jobs) for(const type of ['qp','ms']) {
-      const name=filename(job.q,type);
-      if(!files.has(name)) sources.set(name,job.q.url.split('#')[0].replace('_qp_',type==='ms'?'_ms_':'_qp_'));
-    }
-    let completed=0;
-    const pending=[...sources];
-    const missing=[];
-    async function downloadNext() {
-      while(pending.length) {
-        const [name,url]=pending.shift();
-        let loaded=false;
-        for(const address of [new URL('source-pdfs/'+name,document.baseURI).href]) {
-          try {
-            const response=await fetch(address,{credentials:'omit',signal:AbortSignal.timeout(30000)});
-            if(!response.ok) continue;
-            const bytes=new Uint8Array(await response.arrayBuffer());
-            if(!new TextDecoder().decode(bytes.subarray(0,5)).startsWith('%PDF-')) continue;
-            await PDFDocument.load(bytes);
-            files.set(name,{bytes});
-            loaded=true;
-            break;
-          } catch { /* Try the next source for this paper. */ }
-        }
-        if(!loaded) missing.push(name);
-        status('Loading source PDFs: '+(++completed)+' / '+sources.size);
-      }
-    }
-    await Promise.all(Array.from({length:Math.min(4,pending.length)},downloadNext));
-    await refresh();
-    $('manualSources').hidden=missing.length===0;
-    status(missing.length?'Could not fetch '+missing.join(', ')+'. Use the local edition with its downloaded paper library, or retry the source.':'Source papers are ready. Preview your questions or download a PDF.');
-
-  } catch(error) {status(error.message);}
+  await loadSelection();
 };
+$('retryPapers').onclick=loadSelection;
 $('closeExport').onclick=()=>{$('exportDialog').close();if(previewUrl)URL.revokeObjectURL(previewUrl);$('pdfPreview').removeAttribute('src');};
-$('sourceFiles').onchange=async event=>{
-  try {
-    status('Reading PDF files…');
-    for(const file of event.target.files) {
-      const name=file.name.toLowerCase();
-      if(!/^9709_[msw]\d{2}_(qp|ms)_\d{2}\.pdf$/.test(name)) throw Error('Keep the original filename, for example 9709_s24_qp_11.pdf.');
-      const bytes=new Uint8Array(await file.arrayBuffer());
-      // Validate before replacing an already loaded document.
-      await PDFDocument.load(bytes);
-      files.set(name,{bytes});
-    }
-    await refresh();
-    status('PDFs loaded. Check each crop. Scanned PDFs may require page coordinates entered manually.');
-  }catch(error){status(error.message);}
-  event.target.value='';
-};
-
 async function createEdition(teacher) {
   const sourceDocs=new Map();
   const prepared=[];
@@ -219,7 +209,7 @@ async function createEdition(teacher) {
     for(const type of (teacher?['qp','ms']:['qp'])) {
       const name=filename(job.q,type);
       const source=await readSource(name);
-      if(!source)throw Error('Import '+name+' before creating this edition.');
+      if(!source)throw Error('Retry loading this paper.');
       const regions=parseRegions(job.inputs[type].value,source.pages);
       if(!sourceDocs.has(name))sourceDocs.set(name,await PDFDocument.load(source.bytes));
       item.parts.push({type,source,document:sourceDocs.get(name),regions});
@@ -286,7 +276,7 @@ for(const [id,teacher] of [['downloadStudent',false],['downloadTeacher',true]]) 
     buttons.forEach(b=>b.disabled=true);
     try{status('Building PDF…');await createEdition(teacher);status((teacher?'Teacher':'Student')+' PDF created.');}
     catch(error){status(error.message);}
-    finally{buttons.forEach(b=>b.disabled=false);}
+    finally{buttons.forEach((b,i)=>b.disabled=!jobs.every(job=>files.has(filename(job.q,'qp')) && (!i || files.has(filename(job.q,'ms')))));}
   };
 }
 
@@ -297,9 +287,7 @@ const cardSources = new Map();
 function localCardSource(name) {
   if (cardSources.has(name)) return cardSources.get(name);
   const pending = (async () => {
-    const response = await fetch('source-pdfs/'+name);
-    if (!response.ok) throw Error('Source unavailable');
-    const source = {bytes: new Uint8Array(await response.arrayBuffer())};
+    const source = {bytes: await getPaperBytes(name)};
     return parseSource(source);
   })();
   cardSources.set(name,pending);
