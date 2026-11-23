@@ -38,7 +38,8 @@ function render() {
   byId('p1').className=paper==='P1'?'active':'';
   byId('s1').className=paper==='S1'?'active':'';
   byId('count').textContent=''+rows.length+' questions · '+selected.length+' selected';
-  byId('cards').innerHTML=rows.slice(0,visibleCount).map(q=>`<article><small>Past paper · ${e(q.marks)} marks</small><h3>${e(q.ref)}</h3><b>${e(q.topic)} ${e(topics[q.topic] || 'Unclassified')}</b><span>${e(q.skill)}</span><p>${e(q.note)}</p><footer><button data-add="${bank.indexOf(q)}">${selected.includes(q)?'Remove':'Add to paper'}</button>${q.url?`<a href="${e(q.url)}" target="_blank" rel="noopener">Open original</a>`:`<details><summary>View answer</summary>${e(q.answer)}</details>`}</footer></article>`).join('') || 'No matching questions. Try another chapter or search term.';
+  byId('cards').innerHTML=rows.slice(0,visibleCount).map(q=>`<article><small>Past paper · ${e(q.marks)} marks</small><h3>${e(q.ref)}</h3><b>${e(q.topic)} ${e(topics[q.topic] || 'Unclassified')}</b><span>${e(q.skill)}</span><div class="stemPreview" data-entry="${bank.indexOf(q)}">Loading question…</div><details class="answerPreview"><summary>View mark scheme</summary><div data-entry="${bank.indexOf(q)}"></div></details><footer><button data-add="${bank.indexOf(q)}">${selected.includes(q)?'Remove':'Add to paper'}</button>${q.url?`<a href="source-pdfs/${e(q.url.split('/').pop())}" target="_blank" rel="noopener">Open original</a>`:`<details><summary>View answer</summary>${e(q.answer)}</details>`}</footer></article>`).join('') || 'No matching questions. Try another chapter or search term.';
+  window.dispatchEvent(new Event('cardsupdated'));
   byId('basket').innerHTML=selected.map((q,i)=>`<li>${e(q.ref)} · ${q.marks} marks <button data-del="${i}" aria-label="Remove">×</button>${i?`<button data-up="${i}">Move up</button>`:''}</li>`).join('');
   byId('sum').textContent=selected.reduce((s,q)=>s+q.marks,0);
   byId('num').textContent=selected.length;
@@ -90,7 +91,7 @@ for (const year of years) {
   group.append(summary);
   for (const p of papers) {
     const link = document.createElement('a');
-    link.href=p.url;link.target='_blank';link.rel='noopener';
+    link.href='source-pdfs/'+p.url.split('/').pop();link.target='_blank';link.rel='noopener';
     link.textContent=p.ref+' · '+(p.count?p.count+' entries · '+p.indexedMarks+'/'+p.totalMarks+' marks':'Index pending');
     group.append(link);
   }

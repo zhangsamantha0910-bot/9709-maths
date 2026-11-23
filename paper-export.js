@@ -29,30 +29,11 @@ function parseRegions(value, pages) {
 }
 function regionsText(regions) {return regions.map(r=>r.page+':'+r.top.toFixed(1)+'-'+r.bottom.toFixed(1)).join(', ');}
 
-function readWithExtension(file) {
-  return new Promise((resolve,reject)=>{
-    const id=crypto.randomUUID();
-    function finish(error,bytes) {
-      clearTimeout(timer);
-      window.removeEventListener('message',receive);
-      if(error)reject(error); else resolve(bytes);
-    }
-    function receive(event) {
-      const data=event.data;
-      if(event.source!==window || event.origin!==location.origin || data?.channel!=='9709-result' || data.id!==id)return;
-      try {
-        if(!data.pdf)throw Error(data.error || 'Missing PDF');
-        finish(null,Uint8Array.from(atob(data.pdf),ch=>ch.charCodeAt(0)));
-      }catch(error){finish(error);}
-    }
-    const timer=setTimeout(()=>finish(Error('Reader timed out')),45000);
-    window.addEventListener('message',receive);
-    window.postMessage({channel:'9709-request',id,file},location.origin);
-  });
-}
 async function readSource(name) {
   if (!files.has(name)) return null;
-  const source = files.get(name);
+  return parseSource(files.get(name));
+}
+async function parseSource(source) {
   if (source.pages) return source;
   source.document = await pdfjs.getDocument({
     data: source.bytes.slice(), standardFontDataUrl: new URL('./vendor/standard_fonts/', import.meta.url).href,
@@ -76,6 +57,7 @@ function findRegions(source, number, type) {
   let expected=1;
   for (let p=0;p<source.pages.length;p++) {
     const page=source.pages[p];
+    if(p===0) continue;
     if(type==='ms' && !page.lines.some(l=>/^Marks$/i.test(l.text.trim()))) continue;
     const candidates=page.lines.filter(l=>l.top>38 && l.top<page.height-40 && l.x<(type==='ms'?150:80))
       .sort((a,b)=>a.top-b.top || a.x-b.x);
@@ -164,7 +146,7 @@ async function refresh() {
       const text=document.createElement('p'); text.textContent=source?'Loaded '+name:'Required PDF: '+name;
       const preview=document.createElement('button');preview.textContent='Preview crop';preview.onclick=()=>showPreview(job,type);
       const link=document.createElement('a');link.textContent='Open source';link.target='_blank';link.rel='noopener';
-      link.href=type==='qp'?job.q.url.split('#')[0]:job.q.url.split('#')[0].replace('_qp_','_ms_');
+      link.href='source-pdfs/'+name;
       row.append(label,text,input,preview,link);article.append(row);
     }
     $('exportJobs').append(article);
@@ -188,15 +170,7 @@ window.openPaperExport=async selection=>{
       while(pending.length) {
         const [name,url]=pending.shift();
         let loaded=false;
-        if(document.documentElement.dataset.paperReader==='1') {
-          try {
-            const bytes=await readWithExtension(name);
-            await PDFDocument.load(bytes);
-            files.set(name,{bytes});
-            loaded=true;
-          } catch { /* Fall back to the site sources. */ }
-        }
-        for(const address of loaded?[]:[new URL('source-pdfs/'+name,document.baseURI).href,url]) {
+        for(const address of [new URL('source-pdfs/'+name,document.baseURI).href]) {
           try {
             const response=await fetch(address,{credentials:'omit',signal:AbortSignal.timeout(30000)});
             if(!response.ok) continue;
@@ -318,4 +292,83 @@ for(const [id,teacher] of [['downloadStudent',false],['downloadTeacher',true]]) 
 
 
 
+
+const cardSources = new Map();
+function localCardSource(name) {
+  if (cardSources.has(name)) return cardSources.get(name);
+  const pending = (async () => {
+    const response = await fetch('source-pdfs/'+name);
+    if (!response.ok) throw Error('Source unavailable');
+    const source = {bytes: new Uint8Array(await response.arrayBuffer())};
+    return parseSource(source);
+  })();
+  cardSources.set(name,pending);
+  if (cardSources.size>6) cardSources.delete(cardSources.keys().next().value);
+  pending.catch(()=>{if (cardSources.get(name)===pending) cardSources.delete(name);});
+  return pending;
+}
+
+async function paintSource(panel,type) {
+  const q=window.past[Number(panel.dataset.entry)];
+  const name=filename(q,type);
+  const token=Symbol();
+  panel.previewToken=token;
+  panel.textContent='Loading…';
+  try {
+    const source=await localCardSource(name);
+    const regions=findRegions(source,Number(q.ref.match(/ Q(\d+)/)[1]),type);
+    if (!regions.length) throw Error('Page boundaries need review');
+    const body=document.createElement('div');
+    for(const r of regions) {
+      if(!panel.isConnected || panel.previewToken!==token)return;
+      const page=await source.document.getPage(r.page);
+      const scale=1.4, viewport=page.getViewport({scale});
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.ceil(viewport.width-56*scale);
+      canvas.height=Math.ceil((r.bottom-r.top)*scale);
+      await page.render({canvasContext:canvas.getContext('2d'),viewport,transform:[1,0,0,1,-28*scale,-r.top*scale]}).promise;
+      canvas.setAttribute('aria-label',q.ref+' · '+(type==='ms'?'Mark scheme':'Question')+' · page '+r.page);
+      body.append(canvas);
+    }
+    if(panel.isConnected && panel.previewToken===token)panel.replaceChildren(body);
+  } catch {
+    if(panel.previewToken!==token)return;
+    const link=document.createElement('a');
+    link.href='source-pdfs/'+name+(type==='qp'?(q.url.match(/#page=\d+/)?.[0] || ''):'');
+    link.target='_blank';link.rel='noopener';
+    link.textContent='Open the local PDF to locate '+q.ref.split(' Q')[1]+' (crop needs review)';
+    panel.replaceChildren(link);
+  }
+}
+const previewQueue=[];
+let runningPreviews=0;
+function schedulePreview(panel,type){
+  previewQueue.push([panel,type]);
+  while(runningPreviews<2 && previewQueue.length){
+    const [next,kind]=previewQueue.shift();
+    if(!next.isConnected)continue;
+    runningPreviews++;
+    paintSource(next,kind).finally(()=>{runningPreviews--;drainQueue();});
+  }
+}
+function drainQueue(){
+  if(previewQueue.length){const [panel,type]=previewQueue.shift();schedulePreview(panel,type);}
+}
+const observer=new IntersectionObserver(entries=>{
+  for(const entry of entries)if(entry.isIntersecting){
+    observer.unobserve(entry.target);schedulePreview(entry.target,'qp');
+  }
+},{rootMargin:'80px'});
+function observeCards(){
+  observer.disconnect();
+  for(const panel of document.querySelectorAll('.stemPreview'))observer.observe(panel);
+}
+window.addEventListener('cardsupdated',observeCards);
+document.addEventListener('toggle',event=>{
+  const details=event.target;
+  if(details.matches?.('.answerPreview') && details.open && !details.dataset.loaded){
+    details.dataset.loaded='1';schedulePreview(details.querySelector('[data-entry]'),'ms');
+  }
+},true);
+observeCards();
 
