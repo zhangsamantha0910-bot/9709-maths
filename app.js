@@ -14,17 +14,21 @@ function save() {
 function options(id, label, entries) {
   byId(id).replaceChildren(new Option(label,''),...entries.map(([key,text])=>new Option(text,key)));
 }
+function chapterLabel(key) {
+  return topics[key] ? 'Chapter ' + key.split('.')[1] + ' · ' + topics[key] : 'Chapter pending review';
+}
 function chapters() {
-  options('chapter','All chapters',Object.entries(topics).filter(([key])=>key.startsWith(paper==='P1'?'1.':'5.')).map(([key,name])=>[key,key+' '+name]));
+  const entries = Object.keys(topics).filter(key => key.startsWith(paper + '.'));
+  options('chapter', 'All coursebook chapters', entries.map(key => [key, chapterLabel(key)]));
   skills();
 }
 function skills() {
-  const names = bank.filter(q=>q.paper===paper && (!byId('chapter').value || q.topic===byId('chapter').value)).map(q=>q.skill);
+  const names = bank.filter(q=>q.paper===paper && (!byId('chapter').value || q.topic===byId('chapter').value)).map(q=>q.skill).filter(name => name && !['Topic pending review','Suggested topic'].includes(name));
   options('skill','All skills',[...new Set(names)].map(s=>[s,s]));
 }
 function filtered() {
   const query=byId('query').value.trim().toLowerCase();
-  return bank.filter(q=>q.paper===paper && (!byId('chapter').value || q.topic===byId('chapter').value) && (!byId('skill').value || q.skill===byId('skill').value) && [q.ref,q.note,q.skill,topics[q.topic]].join(' ').toLowerCase().includes(query));
+  return bank.filter(q=>q.paper===paper && (!byId('chapter').value || q.topic===byId('chapter').value) && (!byId('skill').value || q.skill===byId('skill').value) && [q.ref,q.note,q.skill,q.chapterStatus,chapterLabel(q.topic)].join(' ').toLowerCase().includes(query));
 }
 let visibleCount = 40;
 let previousFilter = '';
@@ -38,7 +42,7 @@ function render() {
   byId('p1').className=paper==='P1'?'active':'';
   byId('s1').className=paper==='S1'?'active':'';
   byId('count').textContent=''+rows.length+' questions · '+selected.length+' selected';
-  byId('cards').innerHTML=rows.slice(0,visibleCount).map(q=>`<article><small>Past paper · ${e(q.marks)} marks</small><h3>${e(q.ref)}</h3><b>${e(q.topic)} ${e(topics[q.topic] || 'Unclassified')}</b><span>${e(q.skill)}</span><div class="stemPreview" data-entry="${bank.indexOf(q)}">Loading question…</div><details class="answerPreview"><summary>View mark scheme</summary><div data-entry="${bank.indexOf(q)}"></div></details><footer><button data-add="${bank.indexOf(q)}">${selected.includes(q)?'Remove':'Add to paper'}</button>${q.url?`<a href="source-pdfs/${e(q.url.split('/').pop())}" target="_blank" rel="noopener">Open original</a>`:`<details><summary>View answer</summary>${e(q.answer)}</details>`}</footer></article>`).join('') || 'No matching questions. Try another chapter or search term.';
+  byId('cards').innerHTML=rows.slice(0,visibleCount).map(q=>`<article><small>Past paper · ${e(q.marks)} marks</small><h3>${e(q.ref)}</h3><b>${e(q.chapterStatus || chapterLabel(q.topic))}</b><span>${['Suggested topic','Topic pending review'].includes(q.skill) ? '' : e(q.skill)}</span><div class="stemPreview" data-entry="${bank.indexOf(q)}">Loading question…</div><details class="answerPreview"><summary>View mark scheme</summary><div data-entry="${bank.indexOf(q)}"></div></details><footer><button data-add="${bank.indexOf(q)}">${selected.includes(q)?'Remove':'Add to paper'}</button>${q.url?`<a href="source-pdfs/${e(q.url.split('/').pop())}" target="_blank" rel="noopener">Open original</a>`:`<details><summary>View answer</summary>${e(q.answer)}</details>`}</footer></article>`).join('') || 'No matching questions. Try another chapter or search term.';
   window.dispatchEvent(new Event('cardsupdated'));
   byId('basket').innerHTML=selected.map((q,i)=>`<li>${e(q.ref)} · ${q.marks} marks <button data-del="${i}" aria-label="Remove">×</button>${i?`<button data-up="${i}">Move up</button>`:''}</li>`).join('');
   byId('sum').textContent=selected.reduce((s,q)=>s+q.marks,0);
